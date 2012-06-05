@@ -1,0 +1,68 @@
+# Controle de acesso Mifare integrado a um webserver, com identificação.
+# INE5349 - Laboratório de Microprocessadores
+# Lucas Bortolaso Torri - 04232305
+# Vinicius dos Santos Livramento - 04232461
+
+
+Partes do Sistema:
+	- Fisicas
+		* Leitor Mifare: interfaceamento entre usuário e sistema para leitura de cartões ou etiquetas Mifare.
+		* Kit Gumstix: conjunto de uma placa mãe embarcada com memória extendida, uma interface para acesso console via serial e uma interface para acesso Ethernet. A placa possui um processador Intel PXA255 e roda o sistema operacional Linux, distribuição da própria fabricante, com versão de kernel 2.6.18. No sistema encontram-se rodando o Servidor Web Boa, com CGI 1.1 e, o Servidor SSH Dropbear, ambos com baixo uso de memória para uso em sistemas embarcados.
+	- Software do Sistema
+		* Arquivo log: relatório de acessos ao sistema, incluindo tanto usuários cadastrados como não cadastrados.
+		* Arquivo usuarios: base de usuários cadastrados.
+		* Programa cadastrarUsuario: responsável por fazer o cadastro de novos usuários, o programa pede ao usuário passar o cartão e solicita preenchimento do nome do mesmo. Logo após as informações são guardadas na base de usuários e informa onde é possível disponibilizar uma foto do usuário. Feito usando linguagem C.
+		* Programa leitorDeCartoes: programa em linguagem C que faz a leitura dos cartões, verifica se o mesmo existe na base de usuários e anexa o relatório no arquivo de log, informando no console se o mesmo possui autorização de acesso.
+		* Programa log_parser: transforma o arquivo de log em uma tabela HTML, usando Linguagem C.
+		* CGI mifare: script sh para acesso web do uso do sistema que gera uma página com os últimos 10 usuários que acessaram o mesmo.
+
+
+Funcionamento:
+	O sistema começa sem nenhum usuário na base de usuários e nenhuma informação de log, sendo então necessário cadastrar um ou mais usuários através do programa cadastrarUsuarios, para que o mesmo possa filtrar acessos.
+	Após o cadastro dos usuários o programa leitorDeCartoes deve ser executado para que o controle do acesso seja iniciado. Com o programa aberto, para cada cartão lido na leitora o ID único do cartão MIFARE é buscado na base de usuários e o relatório dessa ação são anexados ao arquivo de log. O leitor envia os dados ao programa pela porta serial do Kit Gumstix, mapeada no dispositivo /dev/ttyS0 do sistema operacional, usando o protocolo RS232 a um baud rate de 9600, com byte de 8 bits, sem paridade e 1 bit de parada.
+	O administrador que queira saber quais foram os últimos acessos ao sistema, deve acessar o servidor web, executando o arquivo CGI chamdo mifare, que em conjunto com o programa log_parser gera uma página com a lista dos últimos 10 cartões lido, juntamente com foto e nome, caso o usuário esteja cadastrado mais data do acesso e resultado da autenticação.
+
+
+Tecnologias Envolvidas:
+	- Linux: sistema operacional do tipo Unix que utiliza o núcleo Linux.
+	- SSH: simultaneamente, um programa de computador e um protocolo de rede que permite a conexão com outro computador na rede, de forma a executar comandos de uma unidade remota.
+	- HTML: linguagem de marcação utilizada para produzir páginas na Web. Documentos HTML podem ser interpretados por navegadores.
+	- CGI: é um acrónimo para a expressão inglesa Common Gateway Interface. Consiste numa importante tecnologia que permite gerar páginas dinâmicas, permitindo a um navegador passar parâmetros para um programa alojado num servidor web.
+	- Mifare: tecnologia de cartões de identificação sem fio, sendo a mais usada no mercado atual.
+	- RS232: padrão de comunicação de dados para troca de informações binárias entre dispositivos diferentes.
+	- Linguagem C: linguagem de programação estruturada e padronizada criada na década de 1970 para ser usada no sistema operacional UNIX.
+
+
+Modelo dos Arquivos:
+	- log: arquivo de texto, onde cada linha é o relatório de acesso de um usuário, com o formato ID_CARTAO|NOME_DO_USUARIO|DATA_DO_ACESSO|PERMISSAO.
+	- usuarios: arquivo de texto, sendo que cada linha representa um usuário cadastrado no sistema, no formato ID_CARTAO|NOME_DO_USUARIO.
+
+
+Diagrama de Blocos:
+
+                         +-------------------------------------------------------------+
+                         |  GUMSTIX / LINUX                                            |
+                         |                                                             |
+                         |                                +------------------+         |
+        +------------------------------------------------>|     PROGRAMA     |         |
+        |                |                                | cadastrarUsuario |         |
+        |                |                                +------------------+         |
+        |                |                                         |                   |
+        |                |                                         V                   |
++---------------+        |      +----------------+        +------------------+         |
+| LEITOR MIFARE |-------------->|    PROGRAMA    |<-------| ARQUIVO usuarios |         |
++---------------+        |      | leitorDeCartao |        +------------------+         |
+                         |      +----------------+                                     |
+                         |              |                 +-------------------+        |
+                         |              V                 | SERVIDOR WEB      |        |
+                         |      +---------------+         |                   |        |
+                         |      |  ARQUIVO log  |         | +------------+    |        |      +---------------+
+                         |      +---------------+         | | CGI mifare |------------------->| NAVEGADOR WEB |
+                         |              |                 | +------------+    |        |      +---------------+
+                         |              V                 |       ^           |        |
+                         |      +----------------+        +-------|-----------+        |
+                         |      |    PROGRAMA    |                |                    |
+                         |      |   log_parser   |----------------+                    |
+                         |      +----------------+                                     |
+                         |                                                             |
+                         +-------------------------------------------------------------+
